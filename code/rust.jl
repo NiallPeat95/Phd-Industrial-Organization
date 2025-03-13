@@ -50,8 +50,8 @@ function generate_data(θ::Vector, λ::Number, β::Number, s::Vector, N::Int)::T
     δ = (rand(Uniform(0,1), N) .< λ)            # Compute mileage shock
     St1 = min.(St .* (A.==0) + δ, max(s...))   # Compute nest state
     df = DataFrame(St=St, A=A, St1=St1)
-    CSV.write("../data/rust.csv", df)
-    return St, A, St1
+    CSV.write("data/rust.csv", df)
+    return St, A, St1, df
 end;
 
 function logL_Rust(θ0::Vector, λ::Number, β::Number, s::Vector, St::Vector, A::BitVector)::Number
@@ -141,8 +141,6 @@ function logL_AM(θ0::Vector, λ::Number, β::Number, s::Vector, St::Vector, A::
     return -logL
 end;
 
-
-
 ## Main
 
 # Set parameters
@@ -159,7 +157,7 @@ Vbar = compute_Vbar(θ, λ, β, s);
 
 # Generate data
 N = Int(1e5);
-St, A, St1 = generate_data(θ, λ, β, s, N);
+St, A, St1, df = generate_data(θ, λ, β, s, N);
 print("\n\nwe observe ", sum(A), " investment decisions in ", N, " observations")
 
 # Estimate lambda
@@ -179,37 +177,4 @@ print("\n\nThe likelihood at the true parameter is $logL_trueθ")
 θ_R = optimize(x -> logL_Rust(x, λ, β, s, St, A), θ0).minimizer;
 print("\n\nEstimated thetas: $θ_R (true = $θ)")
 
-# Not all initial values are equally good
-θ0 = Float64[1,1,1];
 
-# Optimize
-θ_R2 = optimize(x -> logL_Rust(x, λ, β, s, St, A), θ0).minimizer;
-print("\n\nEstimated thetas: $θ_R2 (true = $θ)")
-
-# Estimate CCP
-P = [mean(A[St.==i]) for i=s]
-CCP = [(1 .- P) P]
-
-# Compute T
-T = compute_T(k, λ_)
-
-# Optimize
-θ0 = Float64[0,0,0];
-θ_HM = optimize(x -> logL_HM(x, λ, β, s, St, A, T, CCP), θ0).minimizer;
-print("\n\nEstimated thetas: $θ_HM (true = $θ)")
-
-# Aguirregabiria & Mira (2002)
-K = 2
-
-# Optimize
-θ0 = Float64[0,0,0];
-θ_AM = optimize(x -> logL_AM(x, λ, β, s, St, A, T, CCP, K), θ0).minimizer;
-print("\n\nEstimated thetas: $θ_AM (true = $θ)")
-
-
-# Compare times
-θ0 = Float64[0,0,0];
-time_Rust = optimize(x -> logL_Rust(x, λ, β, s, St, A), θ0).time_run;
-time_HM = optimize(x -> logL_HM(x, λ, β, s, St, A, T, CCP), θ0).time_run;
-time_AM = optimize(x -> logL_AM(x, λ, β, s, St, A, T, CCP, K), θ0).time_run;
-print("Time Rust: $time_Rust\nTime HM: $time_HM\nTime AM: $time_AM")
