@@ -117,10 +117,17 @@ print("\n\nThe likelihood at the true parameter is $logL_trueθ")
 # Select starting values
 θ0 = Float64[0,0,0];
 
-opt_options = Optim.Options(show_trace = true)
+opt_options = Optim.Options(show_trace = true, store_trace = true,extended_trace = true)
 
 # Optimize
-θ_R = optimize(x -> logL_Rust(x, λ, β, s, St, A), θ0, LBFGS(), opt_options).minimizer;
+result = optimize(x -> logL_Rust(x, λ, β, s, St, A), θ0, opt_options);
+
+θ_R = result.minimizer;
+
+result.trace
+
+df = DataFrame(result.trace)
+
 print("\n\nEstimated thetas: $θ_R (true = $θ)")
 
 
