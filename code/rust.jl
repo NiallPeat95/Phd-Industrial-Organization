@@ -85,62 +85,6 @@ function compute_T(k::Int, λ_::Number)::Array
     return(T)
 end;
 
-function HM_inversion(CCP::Matrix, T::Array, U::Matrix, β::Number)::Vector
-    """Perform HM inversion"""
-
-    # Compute LHS (to be inverted)
-    γ = Base.MathConstants.eulergamma
-    LEFT = I - β .* (CCP[:,1] .* T[:,:,1] + CCP[:,2] .* T[:,:,2])
-
-    # Compute LHS (not to be inverted)
-    RIGHT = γ .+ sum(CCP .* (U .- log.(CCP)) , dims=2)
-
-    # Compute V
-    EV_ = inv(LEFT) * RIGHT
-    return vec(EV_)
-end;
-
-function from_EV_to_EP(EV_::Vector, T::Array, U::Matrix, β::Number)::Vector
-    """Compute expected policy from expected value"""
-    E = exp.( U + β .* [(T[:,:,1] * EV_) (T[:,:,2] * EV_)] )
-    EP_ = E[:,2] ./ sum(E, dims=2)
-    return vec(EP_)
-end;
-
-function logL_HM(θ0::Vector, λ::Number, β::Number, s::Vector, St::Vector, A::BitVector, T::Array, CCP::Matrix)::Number
-    """Compute log-likelihood function for HM problem"""
-    # Compute static utility
-    U = compute_U(θ0, s)
-
-    # Espected value by inversion
-    EV_ = HM_inversion(CCP, T, U, β)
-
-    # Implies choice probabilities
-    EP_ = from_EV_to_EP(EV_, T, U, β)
-
-    # Likelihood
-    logL = sum(log.(EP_[St[A.==1]])) + sum(log.(1 .- EP_[St[A.==0]]))
-    return -logL
-end;
-
-function logL_AM(θ0::Vector, λ::Number, β::Number, s::Vector, St::Vector, A::BitVector, T::Array, CCP::Matrix, K::Int)::Number
-    """Compute log-likelihood function for AM problem"""
-    # Compute static utility
-    U = compute_U(θ0, s)
-    EP_ = CCP[:,2]
-
-    # Iterate HM mapping
-    for _=1:K
-        EV_ = HM_inversion(CCP, T, U, β)    # Espected value by inversion
-        EP_ = from_EV_to_EP(EV_, T, U, β)   # Implies choice probabilities
-        CCP = [(1 .- EP_) EP_]
-    end
-
-    # Likelihood
-    logL = sum(log.(EP_[St[A.==1]])) + sum(log.(1 .- EP_[St[A.==0]]))
-    return -logL
-end;
-
 ## Main
 
 # Set parameters
@@ -149,8 +93,8 @@ end;
 β = 0.95;
 
 # State space
-k = 10;
-s = Vector(1:k);
+k = 50;
+s = Vector(1:10);
 
 # Compute value function
 Vbar = compute_Vbar(θ, λ, β, s);
@@ -173,8 +117,10 @@ print("\n\nThe likelihood at the true parameter is $logL_trueθ")
 # Select starting values
 θ0 = Float64[0,0,0];
 
+opt_options = Optim.Options(show_trace = true)
+
 # Optimize
-θ_R = optimize(x -> logL_Rust(x, λ, β, s, St, A), θ0).minimizer;
+θ_R = optimize(x -> logL_Rust(x, λ, β, s, St, A), θ0, LBFGS(), opt_options).minimizer;
 print("\n\nEstimated thetas: $θ_R (true = $θ)")
 
 
