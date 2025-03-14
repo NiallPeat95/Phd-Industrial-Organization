@@ -8,6 +8,7 @@ using Statistics
 using DataFrames
 using CSV
 using LinearAlgebra
+using Plots
 
 function compute_U(θ::Vector, s::Vector)::Matrix
     """Compute static utility"""
@@ -127,6 +128,36 @@ result = optimize(x -> logL_Rust(x, λ, β, s, St, A), θ0, opt_options);
 result.trace
 
 df = DataFrame(result.trace)
+
+#Extract the iterated theta values
+centroid_vector = df.metadata .|> x -> x["centroid"]
+centroid_matrix = hcat(centroid_vector...)'
+
+# Extract columns
+theta_1 = centroid_matrix[:, 1]
+theta_2 = centroid_matrix[:, 2]
+theta_3 = centroid_matrix[:, 3]
+
+# Get iteration index
+iterations = 1:length(theta_1)
+
+# Plot theta values
+plot(iterations, theta_1, label="θ₁", linewidth=2)
+plot!(iterations, theta_2, label="θ₂", linewidth=2)
+plot!(iterations, theta_3, label="θ₃", linewidth=2)
+
+# Add horizontal dashed lines at specified values (without legend)
+hline!([0.13], linestyle=:dash, color=:black, label=nothing)
+hline!([-0.004], linestyle=:dash, color=:black, label=nothing)
+hline!([3.1], linestyle=:dash, color=:black, label=nothing)
+
+# Labels and title
+xlabel!("Iteration")
+ylabel!("Theta Values")
+title!("Theta Evolution Over Iterations")
+
+# Save the plot
+savefig("theta_evolution.png")
 
 print("\n\nEstimated thetas: $θ_R (true = $θ)")
 
