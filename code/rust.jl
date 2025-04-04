@@ -49,7 +49,7 @@ function generate_data(θ::Vector, λ::Number, β::Number, s::Vector, N::Int)::T
     St = rand(s, N)                             # Draw states
     A = (((Vbar[St,:] + ε) * [-1;1]) .> 0)     # Compute investment decisions
     δ = (rand(Uniform(0,1), N) .< λ)            # Compute mileage shock
-    St1 = min.(St .* (A.==0) + δ, max(s...))   # Compute nest state
+    St1 = min.(St .* (A.==0) + δ, max(s...))   # Compute next state
     df = DataFrame(St=St, A=A, St1=St1)
     CSV.write("data/rust.csv", df)
     return St, A, St1, df
